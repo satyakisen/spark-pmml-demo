@@ -10,5 +10,5 @@ lazy val root = (project in file(".")).
     assembly / mainClass := Some("org.ssen.Driver")
   )
 
-libraryDependencies += "org.apache.spark" %% "spark-mllib" % "3.2.2" % "provided"
+libraryDependencies += "org.apache.spark" %% "spark-mllib" % "3.2.2"
 
