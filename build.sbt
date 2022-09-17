@@ -11,4 +11,8 @@ lazy val root = (project in file(".")).
   )
 
 libraryDependencies += "org.apache.spark" %% "spark-mllib" % "3.2.2"
+libraryDependencies += "org.jpmml" % "pmml-sparkml"% "2.2.0"
+
+excludeDependencies += "org.slf4j" % "slf4j-jdk14"
+
 

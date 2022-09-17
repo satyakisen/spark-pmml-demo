@@ -1,7 +1,13 @@
 package org.ssen
 
+import org.apache.spark.ml.{Pipeline, PipelineModel}
+import org.apache.spark.ml.classification.LogisticRegression
+import org.apache.spark.ml.feature.{StringIndexer, VectorAssembler}
+import org.apache.spark.sql.{Dataset, Row}
+import org.jpmml.sparkml.PMMLBuilder
 import org.ssen.utils.SparkSessionBuilder
 
+import java.io.File
 import scala.util.{Failure, Success, Try}
 
 object Driver {
@@ -16,13 +22,23 @@ object Driver {
       .configs(sparkConfigurations)
       .getOrCreate()
 
-    println(spark.sparkContext.version)
+    val rawDf = spark.read.option("header", "true")
+      .option("inferSchema", "true")
+      .csv("/Users/satyakisen/Downloads/iris/Iris.csv")
 
+    val schema = rawDf.schema
+
+    val split = rawDf.randomSplit(Array(0.8, 0.2))
+
+    val trainDf = split(0)
+
+    val model = initializeTraining(trainDf)
+
+    new PMMLBuilder(schema, model).buildFile(new File("/Users/satyakisen/Downloads/pipeline.pmml"))
     spark.stop()
   }
 
   private[this] def fetchConfiguration(config: String) : Map[String, String] =  {
-    // TODO: Add parsing from arguments.
     val conf = s"Parse Config: $config"
     print(conf)
     Map("spark.app.name" -> "Prod App")
@@ -32,4 +48,16 @@ object Driver {
     "spark.app.name" -> "DevApp",
     "spark.master" -> "local[*]"
   )
+
+  private[this] def initializeTraining(value: Dataset[Row]) : PipelineModel = {
+    val labelCol = "Species"
+    val featuresCol = value.columns.filter(column => !column.equals(labelCol) && !column.equals("Id"))
+    print(featuresCol.mkString(","))
+    val labelIndexer = new StringIndexer().setInputCol(labelCol).setOutputCol("class")
+    val vectorAssembler = new VectorAssembler().setInputCols(featuresCol).setOutputCol("features")
+    val lr = new LogisticRegression().setFeaturesCol("features").setLabelCol("class")
+
+    val pipeline = new Pipeline().setStages(Array(labelIndexer, vectorAssembler, lr))
+    pipeline.fit(value)
+  }
 }
